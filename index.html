@@ -1,0 +1,27 @@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+
+<div id="map" style="height:100vh"></div>
+<script>
+  const map = L.map('map');
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 19 }).addTo(map);
+
+  fetch('mine.kmz')
+    .then(r => r.arrayBuffer())
+    .then(JSZip.loadAsync)
+    .then(zip => zip.file(/\.kml$/i)[0].async('string'))
+    .then(txt => {
+      const kml = new DOMParser().parseFromString(txt, 'text/xml');
+      const geo = toGeoJSON.kml(kml);
+      const layer = L.geoJSON(geo, {
+        style: f => f.geometry.type.includes('Polygon')
+          ? { color: 'red', fillOpacity: 0.3 } : { color: 'lime', weight: 3 },
+        onEachFeature: (f, l) => f.properties?.name &&
+          l.bindTooltip(f.properties.name, { permanent: true })
+      }).addTo(map);
+      map.fitBounds(layer.getBounds());
+    });
+</script>
